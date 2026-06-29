@@ -1,0 +1,38 @@
+Humanity owes its dominant position on Earth not to any special strength of our muscles, nor any unusual sharpness of our teeth, but to the unique ingenuity of our brains.
+It is our brains that are responsible for the complex social organization and the accumulation of technical, economic, and scientific advances that, for better and worse, undergird modern civilization.
+All our technological inventions, philosophical ideas, and scientific theories have gone through the birth canal of the human intellect.
+Arguably, human brain power is the chief rate‐limiting factor in the development of human civilization.
+Unlike the speed of light or the mass of the electron, human brain power is not an eternally fixed constant.
+And, in principle, machines can be made to process information as efficiently as - or more efficiently than - biological nervous systems.
+There are multiple paths to greater intelligence.
+There are of course the traditional means: education and training, and development of better methodologies and conceptual frameworks.
+Also, neurological development can be improved through better infant nutrition, reduced pollution, adequate sleep and exercise, and prevention of diseases that affect the brain.
+We can use biotech to enhance cognitive capacity, by developing pharmaceuticals that improve memory, concentration, and mental energy; or we could achieve these ends with genetic selection and genetic engineering.
+We can invent external aids to boost our effective intelligence - notepads, spreadsheets, visualization software.
+We can also improve our collective intelligence.
+We can do so via norms and conventions - such as the norm against using ad hominem arguments in scientific discussions - and by improving epistemic institutions such the scientific journal, anonymous peer review, and the patent system.
+population into productive endeavors, and we can develop better tools for communication and collaboration - various internet applications being recent examples.
+Each of these ways of enhancing individual and collective human intelligence holds great promise.
+I think they ought to be vigorously pursued.
+Perhaps the smartest and wisest thing the human species could do would be to work on making itself smarter and wiser.
+In the longer run, however, biological human brains might cease to be the predominant nexus of Earthly intelligence.
+Machines will have several advantages: most obviously, faster processing speed - an artificial neuron can operate a million times faster than its biological counterpart.
+Machine intelligences may also have superior computational architectures and learning algorithms.
+Furthermore, artificial intellects can be easily copied, and each new copy can - unlike humans - start life fully‐fledged and endowed with all the knowledge accumulated by its predecessors.
+The spectrum of approaches to creating artificial (general) intelligence ranges from completely unnatural techniques, such as those used in good old‐fashioned AI, to architectures modeled more closely on the human brain.
+This approach would involve creating a very detailed 3d map of an actual brain - showing neurons, synaptic interconnections, and other relevant detail - by scanning slices of it and generating an image using computer software.
+Using computational models of how the basic elements operate, the whole brain could then be emulated on a sufficiently capacious computer.
+However, some unnatural or hybrid approach might well get there sooner.
+It is difficult to predict how long it will take to develop human‐level artificial general intelligence.
+The prospect does not seem imminent.
+But whether it will take a couple of decades, many decades, or centuries, is probably not something that we are currently in a position to know.
+We should acknowledge this uncertainty by assigning some non‐trivial degree of credence to each of these possibilities.
+However long it takes to get from here to roughly human‐level machine intelligence, the step from there to superintelligence is likely to be much quicker.
+This smarter version uses its greater intelligence to improve itself even further.
+The process is iterative, and each cycle is faster than its predecessor.
+The result is an intelligence explosion.
+Within some very short period of time - weeks, hours - radical superintelligence is attained.
+Superintelligence would be the last invention biological man would ever need to make, since, by definition, it would be much better at inventing than we are.
+It would also be super‐effective at creating plans and strategies, working out philosophical problems, persuading and manipulating, and much else beside.
+It is an open question whether the consequences would be for the better or the worse.
+The potential upside is clearly enormous; but the downside includes existential risk.
