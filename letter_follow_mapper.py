@@ -20,7 +20,7 @@ LETTER_INDEX = {ch: i for i, ch in enumerate(ALPHABET)}
 
 def normalize_text(text: str) -> str:
     """Keep only ASCII letters, lowercased."""
-    return "".join(ch.lower() for ch in text if ch.isalpha())
+    return "".join(ch.lower() for ch in text if ch.lower() in LETTER_INDEX)
 
 
 @dataclass(frozen=True)

@@ -1,11 +1,9 @@
-"""Evolution engine: the mind mutates its own learning strategy and keeps what works."""
-
+"""Compete learning strategies on held-out prediction, preserving the incumbent."""
 from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
 import random
-
+from letter_follow_mapper import normalize_text
 from prism.genome import Genome
 from prism.knowledge import KnowledgeBase
 from prism.mind import PrismMind
@@ -15,29 +13,30 @@ from prism.mind import PrismMind
 class EvolutionResult:
     generation: int
     fitness: float
-    intelligence_score: float
+    intelligence_score: float  # legacy field: prediction score only
     improved: bool
     genome: Genome
     top_ideas: list[str]
 
 
+def held_out(train_text, eval_text=None):
+    if eval_text is None:
+        if len(normalize_text(train_text)) < 20:
+            raise ValueError('Need at least 20 letters for a held-out split')
+        cut = int(len(train_text) * .8)
+        train_text, eval_text = train_text[:cut], train_text[cut:]
+    elif not eval_text or normalize_text(eval_text) in normalize_text(train_text):
+        raise ValueError('Evaluation text must be nonempty and excluded from training')
+    if min(len(normalize_text(train_text)), len(normalize_text(eval_text))) < 3:
+        raise ValueError('Training and evaluation require at least three letters each')
+    return train_text, eval_text
+
+
 class EvolutionEngine:
-    """
-    Runs self-evolution cycles:
-
-    1. Train on data
-    2. Measure fitness (prediction + idea richness)
-    3. Mutate genome and compete candidates
-    4. Keep the smartest variant and persist state
-    """
-
-    def __init__(
-        self,
-        state_path: Path | str = ".prism_state/mind.json",
-        population_size: int = 4,
-        train_sample_chars: int = 200_000,
-        eval_sample_chars: int = 40_000,
-    ) -> None:
+    def __init__(self, state_path='.prism_state/mind.json', population_size=4,
+                 train_sample_chars=200_000, eval_sample_chars=40_000):
+        if min(train_sample_chars, eval_sample_chars) < 3:
+            raise ValueError('Sample limits must be at least three')
         self.state_path = Path(state_path)
         self.population_size = max(2, population_size)
         self.train_sample_chars = train_sample_chars
@@ -45,84 +44,48 @@ class EvolutionEngine:
         self.mind = PrismMind(KnowledgeBase.load(self.state_path))
 
     @staticmethod
-    def _sample_text(text: str, max_chars: int) -> str:
-        if len(text) <= max_chars:
-            return text
-        third = max_chars // 3
-        mid = len(text) // 2
-        return text[:third] + text[mid : mid + third] + text[-third:]
+    def _sample_text(text, max_chars):
+        # Contiguous sampling avoids inventing transitions between distant chunks.
+        return text[:max_chars]
 
-    def _fitness(self, mind: PrismMind, train_text: str, eval_text: str) -> float:
+    def _fitness(self, mind, train_text, eval_text):
         mind.ingest(train_text)
-        stats = mind.evaluate(eval_text)
-        idea_bonus = min(10.0, len(mind.knowledge.ideas) ** 0.5)
-        ll_bonus = max(0.0, stats["log_likelihood"] + 4) * 5
-        acc_bonus = stats["top1_accuracy"] * 30
-        return ll_bonus + acc_bonus + idea_bonus
+        return mind.evaluate(eval_text)['log_likelihood']
 
-    def evolve_once(
-        self,
-        train_text: str,
-        eval_text: str | None = None,
-    ) -> EvolutionResult:
-        eval_text = eval_text or train_text[-min(len(train_text), 50_000) :]
+    def evolve_once(self, train_text, eval_text=None):
+        train_text, eval_text = held_out(train_text, eval_text)
         train_sample = self._sample_text(train_text, self.train_sample_chars)
         eval_sample = self._sample_text(eval_text, self.eval_sample_chars)
-
         base = self.mind
-        base_genome = base.genome
-        base_candidate = base.clone_with_genome(base_genome)
-        base_fitness = self._fitness(base_candidate, train_sample, eval_sample)
-
-        candidates: list[tuple[float, PrismMind]] = [(base_fitness, base_candidate)]
-        for _ in range(self.population_size - 1):
-            mutant = base.clone_with_genome(base_genome.mutate())
-            fit = self._fitness(mutant, train_sample, eval_sample)
-            candidates.append((fit, mutant))
-
-        if random.random() < 0.25:
-            hybrid = base.clone_with_genome(
-                base_genome.crossover(Genome().mutate()).mutate(rate=0.15)
-            )
-            candidates.append((self._fitness(hybrid, train_sample, eval_sample), hybrid))
-
-        candidates.sort(key=lambda item: -item[0])
-        best_fitness, winner = candidates[0]
-        improved = best_fitness >= base.knowledge.fitness
-
-        winner.ingest(train_text)
+        # Always compare on this same benchmark, not scores from prior datasets.
+        incumbent = base.evaluate(eval_sample)['log_likelihood']
+        candidates = [(incumbent, base.clone_with_genome(base.genome))]
+        genomes = [base.genome] + [base.genome.mutate() for _ in range(self.population_size - 1)]
+        if random.random() < .25:
+            genomes.append(base.genome.crossover(Genome().mutate()).mutate(rate=.15))
+        for genome in genomes:
+            candidate = base.clone_with_genome(genome)
+            candidates.append((self._fitness(candidate, train_sample, eval_sample), candidate))
+        best_fitness, winner = max(candidates, key=lambda item: item[0])
+        # Do not retrain after selection: persist exactly the evaluated model.
         winner.knowledge.generation = base.knowledge.generation + 1
         winner.knowledge.fitness = best_fitness
-        eval_stats = winner.evaluate(self._sample_text(eval_text, self.eval_sample_chars))
-        winner.knowledge.intelligence_score = winner.compute_intelligence(eval_stats)
+        winner.knowledge.intelligence_score = winner.compute_intelligence(winner.evaluate(eval_sample))
         winner.knowledge.fitness_history.append(best_fitness)
         winner.knowledge.intelligence_history.append(winner.knowledge.intelligence_score)
         winner.knowledge.save(self.state_path)
-
         self.mind = winner
-        return EvolutionResult(
-            generation=winner.knowledge.generation,
-            fitness=best_fitness,
-            intelligence_score=winner.knowledge.intelligence_score,
-            improved=improved,
-            genome=winner.genome,
-            top_ideas=[idea.pattern for idea in winner.knowledge.top_ideas(8)],
-        )
+        return EvolutionResult(winner.knowledge.generation, best_fitness,
+            winner.knowledge.intelligence_score, best_fitness > incumbent,
+            winner.genome, [idea.pattern for idea in winner.knowledge.top_ideas(8)])
 
-    def evolve_many(
-        self,
-        train_text: str,
-        generations: int = 5,
-        eval_text: str | None = None,
-    ) -> list[EvolutionResult]:
-        results: list[EvolutionResult] = []
-        for _ in range(generations):
-            results.append(self.evolve_once(train_text, eval_text))
-        return results
+    def evolve_many(self, train_text, generations=5, eval_text=None):
+        return [self.evolve_once(train_text, eval_text) for _ in range(generations)]
 
-    def learn_only(self, text: str) -> dict:
-        stats = self.mind.ingest(text)
-        eval_stats = self.mind.evaluate(text)
+    def learn_only(self, text, eval_text=None):
+        training, validation = held_out(text, eval_text)
+        stats = self.mind.ingest(training)
+        eval_stats = self.mind.evaluate(validation)
         self.mind.knowledge.intelligence_score = self.mind.compute_intelligence(eval_stats)
         self.mind.knowledge.save(self.state_path)
-        return {**stats, **eval_stats, "intelligence_score": self.mind.knowledge.intelligence_score}
+        return {**stats, **eval_stats, 'prediction_score': self.mind.knowledge.intelligence_score}

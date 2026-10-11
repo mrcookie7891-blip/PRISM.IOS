@@ -29,9 +29,10 @@ class PrismMindTests(unittest.TestCase):
             state = Path(tmp) / "mind.json"
             engine = EvolutionEngine(state_path=state, population_size=3)
             text = "abcdefghijklmnopqrstuvwxyz " * 30 + "the thee thou thread " * 40
-            first = engine.evolve_once(text, eval_text=text)
-            second = engine.evolve_once(text, eval_text=text)
+            first = engine.evolve_once(text, eval_text="the thread winds around a tree")
+            second = engine.evolve_once(text, eval_text="the thread winds around a tree")
             self.assertGreaterEqual(second.generation, first.generation)
+            self.assertGreaterEqual(second.fitness, first.fitness)
             self.assertTrue(state.is_file())
 
     def test_persistence_roundtrip(self) -> None:

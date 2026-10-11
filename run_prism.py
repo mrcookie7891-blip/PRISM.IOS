@@ -32,6 +32,8 @@ def main() -> None:
     parser.add_argument("--think", metavar="SEED", help="Generate text from current mind")
     parser.add_argument("--status", action="store_true", help="Show saved mind status")
     args = parser.parse_args()
+    if args.generations < 1:
+        parser.error("--generations must be positive")
 
     engine = EvolutionEngine(state_path=args.state)
 
@@ -53,7 +55,6 @@ def main() -> None:
         raise SystemExit("No input files found.")
 
     text = load_corpus(files)
-    eval_slice = text[-min(len(text), 80_000) :]
 
     if args.learn_only:
         result = engine.learn_only(text)
@@ -61,13 +62,13 @@ def main() -> None:
         return
 
     print(f"Training PRISM on {len(files)} files ({len(text):,} chars)...")
-    results = engine.evolve_many(text, generations=args.generations, eval_text=eval_slice)
+    results = engine.evolve_many(text, generations=args.generations, eval_text=None)
 
     for item in results:
         mark = "↑" if item.improved else "→"
         print(
             f"Gen {item.generation:>3} {mark}  fitness={item.fitness:.3f}  "
-            f"intelligence={item.intelligence_score:.2f}  "
+            f"prediction_score={item.intelligence_score:.2f}  "
             f"context_order={item.genome.context_order}"
         )
 

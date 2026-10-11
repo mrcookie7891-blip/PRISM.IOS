@@ -1,4 +1,6 @@
 __pycache__/
 *.py[cod]
+.venv/
+runs/
 .prism_state/
 *.egg-info/

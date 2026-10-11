@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+import copy
 import math
 import re
 import string
@@ -45,9 +46,10 @@ class PrismMind:
         for i in range(len(normalized) - 1):
             context = normalized[max(0, i - order + 1) : i + 1]
             nxt = normalized[i + 1]
-            self._update_transition(context, nxt, lr, decay)
+            for size in range(1, len(context) + 1):
+                self._update_transition(context[-size:], nxt, lr, decay)
 
-        self._discover_ideas(normalized)
+        self._discover_ideas(normalized, text)
         self.knowledge.bytes_ingested += len(text.encode("utf-8"))
 
         return {
@@ -71,7 +73,7 @@ class PrismMind:
         for key in row:
             row[key] /= total
 
-    def _discover_ideas(self, normalized: str) -> None:
+    def _discover_ideas(self, normalized: str, original: str) -> None:
         g = self.genome
         ngram_counts: Counter[str] = Counter()
         word_counts: Counter[str] = Counter()
@@ -80,7 +82,7 @@ class PrismMind:
             for i in range(len(normalized) - length + 1):
                 ngram_counts[normalized[i : i + length]] += 1
 
-        for match in WORD_RE.finditer(normalized):
+        for match in WORD_RE.finditer(original.lower()):
             word_counts[match.group()] += 1
 
         known_patterns = {idea.pattern for idea in self.knowledge.ideas}
@@ -160,7 +162,7 @@ class PrismMind:
         """
         Score prediction quality on held-out text.
 
-        Higher log-likelihood and top-1 accuracy mean a smarter mind.
+        Higher log-likelihood and top-1 accuracy mean better letter prediction.
         """
         normalized = normalize_text(text)
         if len(normalized) < 3:
@@ -171,11 +173,11 @@ class PrismMind:
         hits = 0
         total = 0
 
-        for i in range(1, len(normalized) - 1, step):
-            context = normalized[:i]
+        for i in range(1, len(normalized), step):
+            context = normalized[max(0, i - self.genome.context_order):i]
             target = normalized[i]
             dist = self.predict_next(context)
-            prob = dist.get(target, 1e-9)
+            prob = max(dist.get(target, 0.0), 1e-9)
             log_prob += math.log(prob)
             best = max(dist, key=dist.get)
             hits += int(best == target)
@@ -192,17 +194,12 @@ class PrismMind:
 
     def compute_intelligence(self, eval_stats: dict[str, float]) -> float:
         """
-        Composite intelligence score in [0, ~100].
-
-        Grows with prediction skill, idea depth, data absorbed, and generation.
+        Legacy prediction score in [0, 100]; not a measure of general intelligence.
         """
-        idea_depth = sum(math.log1p(idea.strength) for idea in self.knowledge.ideas[:50])
-        data_factor = math.log1p(self.knowledge.bytes_ingested / 1000)
-        prediction = max(0.0, eval_stats.get("top1_accuracy", 0.0)) * 40
-        likelihood = max(0.0, eval_stats.get("log_likelihood", -5) + 5) * 8
-        evolution = min(20.0, self.knowledge.generation * 0.5)
-        score = prediction + likelihood + math.log1p(idea_depth) * 3 + data_factor + evolution
-        return round(min(100.0, score), 2)
+        # Compatibility name only: this is a prediction score, not intelligence.
+        prediction = max(0.0, min(1.0, eval_stats.get("top1_accuracy", 0.0)))
+        likelihood = max(0.0, min(1.0, (eval_stats.get("log_likelihood", -5) + 5) / 5))
+        return round(100 * (prediction + likelihood) / 2, 2)
 
     def think(self, seed: str, length: int = 40) -> str:
         """Generate text from learned letter dynamics (a creativity probe)."""
@@ -225,6 +222,6 @@ class PrismMind:
         }
 
     def clone_with_genome(self, genome: Genome) -> PrismMind:
-        cloned = KnowledgeBase.from_dict(self.knowledge.to_dict())
+        cloned = KnowledgeBase.from_dict(copy.deepcopy(self.knowledge.to_dict()))
         cloned.genome = genome.clamp()
         return PrismMind(cloned)
